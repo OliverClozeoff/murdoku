@@ -12,19 +12,19 @@ class ObjectType:
     name: str             # noun used in clues ("bed")
     icon: str             # shown on the board ("" = drawn with CSS only)
     occupiable: bool      # can a person stand/sit/lie here?
-    on_phrase: str        # "lying on a bed" (only for occupiable objects)
+    on_phrase: str        # "lying on {a}" -> "lying on a *bed*" (occupiable objects only)
     sizes: tuple[int, ...]
 
 
 OBJECT_TYPES: dict[str, ObjectType] = {t.key: t for t in [
     # occupiable
-    ObjectType("bed", "bed", "🛏️", True, "lying on a bed", (2,)),
-    ObjectType("sofa", "sofa", "🛋️", True, "sitting on a sofa", (2,)),
-    ObjectType("chair", "chair", "🪑", True, "sitting on a chair", (1,)),
-    ObjectType("carpet", "carpet", "", True, "standing on a carpet", (1, 2)),
-    ObjectType("bathtub", "bathtub", "🛁", True, "in a bathtub", (2,)),
-    ObjectType("bench", "bench", "🪵", True, "sitting on a bench", (2,)),
-    ObjectType("car", "car", "🚗", True, "in a car", (2,)),
+    ObjectType("bed", "bed", "🛏️", True, "lying on {a}", (2,)),
+    ObjectType("sofa", "sofa", "🛋️", True, "sitting on {a}", (2,)),
+    ObjectType("chair", "chair", "🪑", True, "sitting on {a}", (1,)),
+    ObjectType("carpet", "carpet", "", True, "standing on {a}", (1, 2)),
+    ObjectType("bathtub", "bathtub", "🛁", True, "in {a}", (2,)),
+    ObjectType("bench", "bench", "🪵", True, "sitting on {a}", (2,)),
+    ObjectType("car", "car", "🚗", True, "in {a}", (2,)),
     # blocking
     ObjectType("table", "table", "🍽️", False, "", (1, 2)),
     ObjectType("shelf", "shelf", "📚", False, "", (1,)),
@@ -33,28 +33,32 @@ OBJECT_TYPES: dict[str, ObjectType] = {t.key: t for t in [
     ObjectType("tree", "tree", "🌳", False, "", (1,)),
     ObjectType("sink", "sink", "🚰", False, "", (1,)),
     ObjectType("toolbox", "toolbox", "🧰", False, "", (1,)),
+    ObjectType("pond", "pond", "", False, "", (1, 2)),  # water you can't stand in (drawn with CSS)
 ]}
 
-# Room name -> (floor color, object types that may appear there)
-ROOM_TYPES: dict[str, tuple[str, list[str]]] = {
-    "Kitchen": ("#f7e2a0", ["table", "chair", "sink", "plant"]),
-    "Living Room": ("#c3d9f3", ["sofa", "tv", "carpet", "plant", "chair"]),
-    "Bedroom": ("#f4c8da", ["bed", "carpet", "shelf", "plant"]),
-    "Study": ("#d8cdf3", ["shelf", "chair", "table", "carpet"]),
-    "Dining Room": ("#f7cbb0", ["table", "chair", "plant"]),
-    "Library": ("#dcc5a5", ["shelf", "chair", "carpet", "sofa"]),
-    "Bathroom": ("#b7e4e6", ["bathtub", "sink", "carpet"]),
-    "Garden": ("#c4e5b1", ["tree", "bench", "plant"]),
-    "Hallway": ("#e4e1da", ["carpet", "plant", "shelf"]),
-    "Garage": ("#c3c8d2", ["car", "toolbox", "shelf"]),
+# Room name -> (floor color, floor texture, object types that may appear there)
+ROOM_TYPES: dict[str, tuple[str, str, list[str]]] = {
+    "Kitchen": ("#f7e2a0", "checker", ["table", "chair", "sink", "plant"]),
+    "Living Room": ("#c3d9f3", "planks", ["sofa", "tv", "carpet", "plant", "chair"]),
+    "Bedroom": ("#f4c8da", "planks", ["bed", "carpet", "shelf", "plant"]),
+    "Study": ("#d8cdf3", "planks", ["shelf", "chair", "table", "carpet"]),
+    "Dining Room": ("#f7cbb0", "checker", ["table", "chair", "plant"]),
+    "Library": ("#dcc5a5", "planks", ["shelf", "chair", "carpet", "sofa"]),
+    "Bathroom": ("#b7e4e6", "tiles", ["bathtub", "sink", "carpet"]),
+    "Garden": ("#c4e5b1", "grass", ["tree", "bench", "plant", "pond"]),
+    "Hallway": ("#e4e1da", "tiles", ["carpet", "plant", "shelf"]),
+    "Garage": ("#c3c8d2", "concrete", ["car", "toolbox", "shelf"]),
 }
 
-SUSPECT_NAMES = [
-    "Alice", "Bruno", "Clara", "Dmitri", "Edith", "Felix", "Greta", "Hugo",
-    "Ines", "Jasper", "Kira", "Leon", "Mona", "Nico", "Olga", "Pablo",
-    "Quinn", "Rosa", "Silas", "Tessa", "Umar", "Wendy", "Xavier", "Yara", "Zane",
+# (name, gender) - initials must be unique; only the victim may start with V.
+SUSPECTS = [
+    ("Alice", "f"), ("Bruno", "m"), ("Clara", "f"), ("Dmitri", "m"), ("Edith", "f"),
+    ("Felix", "m"), ("Greta", "f"), ("Hugo", "m"), ("Ines", "f"), ("Jasper", "m"),
+    ("Kira", "f"), ("Leon", "m"), ("Mona", "f"), ("Nico", "m"), ("Olga", "f"),
+    ("Pablo", "m"), ("Quentin", "m"), ("Rosa", "f"), ("Silas", "m"), ("Tessa", "f"),
+    ("Umar", "m"), ("Wendy", "f"), ("Xavier", "m"), ("Yara", "f"), ("Zane", "m"),
 ]
-VICTIM_NAMES = ["Victor", "Vera", "Vincent", "Violet", "Vivian"]
+VICTIMS = [("Victor", "m"), ("Vera", "f"), ("Vincent", "m"), ("Violet", "f"), ("Vivian", "f")]
 
 
 @dataclass

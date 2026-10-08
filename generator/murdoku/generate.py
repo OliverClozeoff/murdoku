@@ -5,12 +5,13 @@ import base64
 import json
 import random
 
-from .clues import ABSTRACT, STRENGTH, Clue, render, true_clues
-from .model import OBJECT_TYPES, ROOM_TYPES, SUSPECT_NAMES, VICTIM_NAMES, Board, Cell, PlacedObject
+from .clues import ABSTRACT, STRENGTH, Clue, People, refs, render, true_clues
+from .hints import explain
+from .model import OBJECT_TYPES, ROOM_TYPES, SUSPECTS, VICTIMS, Board, Cell, PlacedObject
 from .solver import solve
 from .story import make_motive
 
-ROOM_COUNT = {4: (2, 3), 5: (3, 4), 6: (4, 5), 7: (4, 6), 8: (5, 7)}
+ROOM_COUNT = {4: (2, 3), 5: (3, 4), 6: (4, 5), 7: (4, 6), 8: (5, 7), 9: (5, 7), 10: (6, 8)}
 MIN_ROOM_CELLS = 3
 
 
@@ -66,7 +67,7 @@ def place_objects(board: Board, solution: list[Cell], rng: random.Random) -> Non
     """Furnish each room. Blocking objects never cover a solution cell."""
     taken = set(solution)
     for room_idx, name in enumerate(board.room_names):
-        allowed = ROOM_TYPES[name][1]
+        allowed = ROOM_TYPES[name][2]
         room_cells = [c for c in board.cells if board.room(c) == room_idx]
         target = max(1, round(len(room_cells) * rng.uniform(0.25, 0.45)))
         for _ in range(target * 4):
@@ -100,19 +101,19 @@ def trim_clues(board: Board, n: int, victim: int, clues: list[Clue], difficulty:
     hard puzzles try to drop strong clues first.
     """
     jitter = {c: rng.random() * 2.5 for c in clues}
-    sign = {"easy": 1, "medium": 0, "hard": -1}[difficulty]
+    sign = {"easy": 1, "medium": 0, "hard": -1, "expert": -1}[difficulty]
 
     def priority(c: Clue) -> float:
         # Abstract clues (rows, diagonals, compass) go first so puzzles lean on rooms and furniture.
+        # The victim's own clues go early too: the victim's card mostly just says "the victim".
         abstract = -10 if c.kind in ABSTRACT else 0
-        return abstract + sign * STRENGTH[c.kind] + jitter[c] * (3 if sign == 0 else 1)
-
-    order = sorted(clues, key=priority)
+        victims = -5 if c.p == victim else 0
+        return abstract + victims + sign * STRENGTH[c.kind] + jitter[c] * (3 if sign == 0 else 1)
 
     kept = list(clues)
-    for clue in order:
-        # Every person keeps at least one clue about them.
-        if clue.p is not None and sum(1 for c in kept if c.p == clue.p) <= 1:
+    for clue in sorted(clues, key=priority):
+        # Every suspect keeps at least one clue about them.
+        if clue.p is not None and clue.p != victim and sum(1 for c in kept if c.p == clue.p) <= 1:
             continue
         trial = [c for c in kept if c != clue]
         if len(solve(board, n, victim, trial, limit=2)) == 1:
@@ -120,8 +121,27 @@ def trim_clues(board: Board, n: int, victim: int, clues: list[Clue], difficulty:
     return kept
 
 
-def generate(size: int, difficulty: str, rng: random.Random) -> dict:
-    while True:
+def difficulty_fits(difficulty: str, stats: dict, size: int) -> bool:
+    """Match the requested difficulty to how the step solver had to work.
+
+    "lookahead" counts the rounds where a what-if check was needed; bigger boards
+    naturally need more of them, so the bands grow with the board.
+    """
+    if stats["deep"]:
+        return False  # never ship a puzzle that needs trial and error
+    la = stats["lookahead"]
+    if difficulty == "easy":
+        return la == 0
+    if difficulty == "medium":
+        return 1 <= la <= max(3, size - 3)
+    if difficulty == "hard":
+        return la >= 3
+    return la >= size  # expert
+
+
+def generate(size: int, difficulty: str, rng: random.Random, max_tries: int = 300) -> dict:
+    best = None
+    for _ in range(max_tries):
         grid = make_rooms(size, rng)
         if grid is None:
             continue
@@ -134,27 +154,39 @@ def generate(size: int, difficulty: str, rng: random.Random) -> dict:
         place_objects(board, solution, rng)
 
         clues = true_clues(board, solution, victim, rng)
-        found = solve(board, size, victim, clues, limit=2)
-        if len(found) != 1:
+        if solve(board, size, victim, clues, limit=2) != [solution]:
             continue  # rare: even every true clue can't pin it down
-        assert found[0] == solution
         clues = trim_clues(board, size, victim, clues, difficulty, rng)
-        break
 
-    suspects = rng.sample(SUSPECT_NAMES, size - 1)
-    names = suspects[:victim] + [rng.choice(VICTIM_NAMES)] + suspects[victim:]
-    people = [{"name": nm, "letter": nm[0], "victim": i == victim} for i, nm in enumerate(names)]
+        cast = rng.sample(SUSPECTS, size - 1)
+        cast = cast[:victim] + [rng.choice(VICTIMS)] + cast[victim:]
+        people = People([nm for nm, _ in cast], [g for _, g in cast])
+        hints, stats = explain(board, victim, clues, solution, people)
+        if best is None or (best[-1]["deep"] and not stats["deep"]):
+            best = (board, solution, victim, murderer, clues, people, hints, stats)
+        if difficulty_fits(difficulty, stats, size):
+            best = (board, solution, victim, murderer, clues, people, hints, stats)
+            break
+    assert best is not None
+    board, solution, victim, murderer, clues, people, hints, stats = best
+    names = people.names
 
-    def sort_key(c: Clue) -> tuple:
-        return (c.p if c.p is not None else size, STRENGTH[c.kind])
+    by_person: dict[int, list[Clue]] = {i: [] for i in range(size)}
+    facts: list[Clue] = []
+    for c in clues:
+        (facts if c.p is None else by_person[c.p]).append(c)
+
+    def entry(c: Clue) -> dict:
+        return {"text": render(c, people, board), "refs": refs(c, board)}
 
     crime_room = board.room_names[board.room(solution[victim])]
     motive = make_motive(names[murderer], names[victim], crime_room, rng)
-    secret = {"cells": [list(c) for c in solution], "murderer": murderer, "motive": motive}
+    secret = {"cells": [list(c) for c in solution], "murderer": murderer, "motive": motive, "hints": hints}
     return {
         "size": size,
         "difficulty": difficulty,
-        "rooms": [{"name": nm, "color": ROOM_TYPES[nm][0]} for nm in board.room_names],
+        "stats": stats,
+        "rooms": [{"name": nm, "color": ROOM_TYPES[nm][0], "floor": ROOM_TYPES[nm][1]} for nm in board.room_names],
         "grid": board.room_of,
         "objects": [
             {
@@ -166,11 +198,17 @@ def generate(size: int, difficulty: str, rng: random.Random) -> dict:
             }
             for o in board.objects
         ],
-        "people": people,
-        "clues": [
-            {"person": c.p, "text": render(c, names, board)}
-            for c in sorted(clues, key=sort_key)
+        "people": [
+            {
+                "name": nm,
+                "letter": nm[0],
+                "gender": people.genders[i],
+                "victim": i == victim,
+                "clues": [entry(c) for c in sorted(by_person[i], key=lambda c: -STRENGTH[c.kind])],
+            }
+            for i, nm in enumerate(names)
         ],
+        "facts": [entry(c) for c in facts],
         # Base64 only keeps the answer from being spoiled at a glance; it isn't security.
         "secret": base64.b64encode(json.dumps(secret).encode()).decode(),
     }

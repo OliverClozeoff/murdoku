@@ -9,80 +9,119 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#">Murdoku</a>
-    <button class="btn ghost" id="help-btn" type="button">How to play</button>
-  </header>
-
-  <main>
-    <!-- Case list -->
-    <section id="home">
-      <div class="intro">
-        <h1>Who was alone with the victim?</h1>
-        <p>Every case is a floor plan and a handful of witness statements. Put every person in exactly one row and one column, follow the clues, and the murderer is whoever was alone in a room with the victim.</p>
+  <!-- ============ Case list ============ -->
+  <section id="home" class="home">
+    <header class="home-head">
+      <div class="brand">Murdoku</div>
+      <div class="home-actions">
+        <button class="btn ghost" data-open="help" type="button">How to play</button>
+        <button class="icon-btn" data-open="options" type="button" aria-label="Options">⚙</button>
       </div>
-      <div id="case-list" class="case-list"></div>
-    </section>
+    </header>
+    <div class="intro">
+      <h1>There's been a murder.</h1>
+      <p>Each case is a floor plan and a handful of witness statements. Put everyone in exactly one row and one column, follow the clues, and the murderer is whoever was alone in a room with the victim.</p>
+    </div>
+    <div id="case-list" class="case-list"></div>
+  </section>
 
-    <!-- Game -->
-    <section id="game" hidden>
-      <div class="game-head">
-        <a class="btn ghost" href="#">← Cases</a>
-        <div class="game-title">
+  <!-- ============ Game ============ -->
+  <section id="game" class="game" hidden>
+    <aside class="side-left">
+      <div class="case-head">
+        <a class="icon-btn" href="#" aria-label="Back to cases">←</a>
+        <div class="case-title">
           <h1 id="case-title"></h1>
           <span id="case-meta" class="muted"></span>
         </div>
         <span id="timer" class="timer">0:00</span>
       </div>
+      <div id="facts" class="facts"></div>
+      <div id="cards" class="cards"></div>
+    </aside>
 
-      <div class="layout">
-        <div class="board-col">
-          <div id="board" class="board" role="grid" aria-label="Floor plan"></div>
-          <div id="legend" class="legend"></div>
-          <div id="suspects" class="suspects" aria-label="People"></div>
-          <div class="tools">
-            <button class="tool" id="tool-x" type="button" aria-pressed="false" title="Mark cells as impossible">✕ Mark</button>
-            <button class="tool" id="tool-erase" type="button" aria-pressed="false" title="Tap a cell to clear it. Hold to clear everything.">⌫ Eraser</button>
-            <button class="tool" id="tool-undo" type="button" title="Undo">↶ Undo</button>
-            <button class="tool subtle" id="tool-reveal" type="button" title="Show the answer">Reveal</button>
-          </div>
-          <p class="hint muted" id="hint">Pick a person, then <b>tap</b> a square for a note or <b>press &amp; hold</b> to place them.</p>
-        </div>
-
-        <aside class="clues-col">
-          <h2>Statements</h2>
-          <div id="clues" class="clues"></div>
-          <p class="muted small">Tap a statement to cross it off.</p>
-        </aside>
+    <div class="board-area">
+      <div id="board-wrap" class="board-wrap">
+        <div id="col-labels" class="labels cols"></div>
+        <div id="row-labels" class="labels rows"></div>
+        <div id="board" class="board" aria-label="Floor plan"></div>
       </div>
-    </section>
-  </main>
+      <div id="picker" class="picker" aria-label="Characters"></div>
+      <p class="hint-line muted" id="hint-line">Select a character, then <b>tap</b> a square for a note or <b>press &amp; hold</b> to place them.</p>
+    </div>
 
+    <aside class="side-right" aria-label="Tools">
+      <div class="tools-label">Tools</div>
+      <button class="tool big" id="tool-x" type="button" aria-pressed="false" title="Mark squares as impossible">✕</button>
+      <button class="tool" id="tool-erase" type="button" aria-pressed="false" title="Tap a square to clear it. Hold this button to clear the board.">
+        <span class="tool-icon">⌫</span><small>hold to clear all</small>
+      </button>
+      <button class="tool" id="tool-undo" type="button">UNDO</button>
+      <div class="spacer"></div>
+      <button class="tool accent" id="tool-hint" type="button">💡 Hint</button>
+      <button class="tool submit" id="tool-submit" type="button" disabled>SUBMIT<small>(place all first)</small></button>
+      <button class="tool" data-open="help" type="button">HOW TO PLAY</button>
+      <div class="tool-row">
+        <button class="tool sq" id="tool-share" type="button" title="Copy link">↗</button>
+        <button class="tool sq" id="tool-sound" type="button" title="Sound on/off">🔊</button>
+        <button class="tool sq" data-open="options" type="button" title="Options">⚙</button>
+      </div>
+      <button class="tool subtle" id="tool-reveal" type="button">Give up</button>
+    </aside>
+  </section>
+
+  <!-- floating bits -->
+  <div id="tooltip" class="tooltip" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- Result -->
+  <div id="hint-panel" class="hint-panel" hidden>
+    <div class="hint-top">
+      <strong id="hint-count">Hint</strong>
+      <button class="icon-btn small" id="hint-close" type="button" aria-label="Close hint">✕</button>
+    </div>
+    <p id="hint-text"></p>
+    <div class="hint-nav">
+      <button class="icon-btn" id="hint-prev" type="button" aria-label="Previous hint">‹</button>
+      <button class="btn ghost small" id="hint-apply" type="button">Place it for me</button>
+      <button class="icon-btn" id="hint-next" type="button" aria-label="Next hint">›</button>
+    </div>
+  </div>
+
+  <!-- ============ Dialogs ============ -->
   <dialog id="result" class="modal">
     <div class="result-body">
-      <div class="result-icon">🔎</div>
+      <div class="result-icon" id="result-icon">🔎</div>
       <h2 id="result-title">Case closed</h2>
-      <p id="result-text"></p>
+      <div id="result-text"></div>
       <div class="row-btns">
-        <a class="btn" href="#" id="result-home">All cases</a>
+        <a class="btn" href="#">All cases</a>
         <button class="btn primary" id="result-next" type="button">Next case →</button>
       </div>
     </div>
   </dialog>
 
-  <!-- How to play -->
+  <dialog id="tutorial" class="modal tutorial">
+    <div class="tut-head"><span id="tut-step" class="mono">01 / 06</span><button class="icon-btn small" id="tut-close" type="button" aria-label="Close">✕</button></div>
+    <div id="tut-body" class="tut-body"></div>
+    <div class="tut-foot">
+      <button class="btn link" id="tut-skip" type="button">Skip</button>
+      <div id="tut-dots" class="dots"></div>
+      <div class="tut-btns">
+        <button class="btn ghost" id="tut-back" type="button">Back</button>
+        <button class="btn primary" id="tut-next" type="button">Next</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="help" class="modal help">
     <div class="help-head">
       <h2>How to play</h2>
-      <button class="icon-btn" id="help-close" type="button" aria-label="Close">✕</button>
+      <button class="icon-btn small" data-close type="button" aria-label="Close">✕</button>
     </div>
     <div class="tabs" role="tablist">
-      <button role="tab" data-tab="rules" aria-selected="true">Rules</button>
+      <button role="tab" data-tab="rules" aria-selected="true">How to Play</button>
       <button role="tab" data-tab="keywords">Keywords</button>
-      <button role="tab" data-tab="tips">Tips</button>
+      <button role="tab" data-tab="tips">Advanced</button>
       <button role="tab" data-tab="faq">FAQ</button>
     </div>
     <div class="tab-panel" data-panel="rules">
@@ -91,29 +130,38 @@
       <h3>Rules</h3>
       <ul>
         <li>Exactly <b>one person per row and per column</b>.</li>
-        <li>Nobody stands on blocking furniture (shown as solid gray tiles: tables, shelves, plants, trees…). Beds, chairs, sofas, carpets, cars and similar <b>can</b> be occupied.</li>
-        <li>A piece of furniture can cover several squares, but a person only takes one of them.</li>
+        <li>Nobody stands on blocking furniture (dark tiles: tables, shelves, plants, trees…). Beds, chairs, sofas, carpets, benches and cars <b>can</b> be occupied.</li>
+        <li>Furniture can cover several squares, but a person only takes one of them.</li>
         <li>The victim is a person too: they count for rows, columns and every clue.</li>
       </ul>
       <h3>Controls</h3>
       <ul>
-        <li><b>Tap a person</b> (chip or statement card) to select them.</li>
-        <li><b>Tap a square</b>: add or remove a small note for that person.</li>
-        <li><b>Press &amp; hold a square</b>: place the person there (hold again to remove).</li>
-        <li><b>Drag</b>: paint notes across several squares.</li>
-        <li><b>✕ Mark</b>: tap or drag to rule squares out. <b>Eraser</b>: tap to clear a square, hold the button to clear the board.</li>
+        <li><b>Tap a character card</b> to select them. Press &amp; hold a card to cross them off.</li>
+        <li><b>Tap a square</b>: add or remove a small note.</li>
+        <li><b>Press &amp; hold a square</b>: place the character (hold again to pick them up).</li>
+        <li><b>Drag</b>: paint notes across squares.</li>
+      </ul>
+      <h3>Tools</h3>
+      <ul>
+        <li><b>✕</b>: tap or drag to rule squares out. Placing someone fills their row and column automatically.</li>
+        <li><b>Eraser</b>: tap a square to clear it; hold the button to clear the board.</li>
+        <li><b>Hint</b>: the next logical step, with the squares it's about.</li>
+        <li><b>Submit</b>: check your answer once everyone is placed.</li>
       </ul>
     </div>
     <div class="tab-panel" data-panel="keywords" hidden>
       <dl class="keywords">
         <dt>beside</dt><dd>Directly left, right, above or below, <i>and</i> in the same room.</dd>
+        <dt>with</dt><dd>In the same room. <b>not with</b>: in different rooms.</dd>
         <dt>alone</dt><dd>Nobody else was in that room, not even the victim.</dd>
         <dt>alone with</dt><dd>Only those two people were in the room.</dd>
         <dt>nobody was in…</dt><dd>That room was completely empty.</dd>
         <dt>corner</dt><dd>A square where a horizontal and a vertical wall of its room meet.</dd>
-        <dt>same diagonal</dt><dd>On either diagonal line through the other person, across the whole grid.</dd>
-        <dt>same row / column</dt><dd>The whole line across the grid, not just the room.</dd>
-        <dt>west / east of</dt><dd>Any square in a column to the left / right, in any row.</dd>
+        <dt>diagonal</dt><dd>On either diagonal line through the other person, across the whole grid.</dd>
+        <dt>row / column</dt><dd>The whole line across the grid, not just the room.</dd>
+        <dt>north / south / west / east of</dt><dd>Any square in a row above / below, or a column to the left / right, anywhere on the grid.</dd>
+        <dt>exactly one row north of</dt><dd>In the row directly above, any column.</dd>
+        <dt>top row / westernmost column</dt><dd>The edge lines of the whole grid.</dd>
       </dl>
     </div>
     <div class="tab-panel" data-panel="tips" hidden>
@@ -123,19 +171,30 @@
       <p>If two people are each confined to the same two columns, nobody else can use those columns. Same for rows.</p>
       <h3>3. Cross the intersections</h3>
       <p>If a person can only be in a few squares, any square that shares a row or column with <i>all</i> of them is ruled out for everyone else.</p>
-      <h3>4. Work backwards</h3>
-      <p>Find a square that must be filled, then ask who could possibly be there.</p>
+      <h3>4. Try it and see</h3>
+      <p>If putting someone on a square would leave somebody else with nowhere to go, that square is impossible.</p>
+      <h3>5. Don't forget the victim</h3>
+      <p>The victim's room holds exactly two people. That alone often places them.</p>
     </div>
     <div class="tab-panel" data-panel="faq" hidden>
       <details><summary>Does “someone” include the victim?</summary><p>Yes. Think of the scene just before the murder, while the victim was still alive.</p></details>
       <details><summary>Are the statements always true?</summary><p>Yes. No tricks, no lies.</p></details>
       <details><summary>“Beside a chair”: could it be several chairs?</summary><p>Yes, at least one. A clue would say “exactly one” if the number mattered. Someone beside a chair may also sit on a chair.</p></details>
       <details><summary>Is there exactly one solution?</summary><p>Yes, every case is checked by a solver. If you found another, re-read the clues carefully, and remember the victim must be alone with the murderer.</p></details>
-      <details><summary>Do I ever have to guess?</summary><p>No. Every case can be solved by deduction.</p></details>
-      <details><summary>Do the names matter?</summary><p>Only the letters. Names are cosmetic.</p></details>
+      <details><summary>Do I ever have to guess?</summary><p>No. Every case is solved step by step by a logic engine before it's published, and that's where the hints come from.</p></details>
+      <details><summary>Do the portraits matter?</summary><p>No, they're decoration. Only the clues count.</p></details>
     </div>
   </dialog>
 
+  <dialog id="options" class="modal options">
+    <div class="help-head">
+      <h2>Options</h2>
+      <button class="icon-btn small" data-close type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="opt-list" id="opt-list"></div>
+  </dialog>
+
+  <script src="avatar.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
