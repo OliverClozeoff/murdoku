@@ -1,0 +1,1 @@
+"""Murdoku-style puzzle generator."""

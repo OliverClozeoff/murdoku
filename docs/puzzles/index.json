@@ -1,0 +1,259 @@
+[
+ {
+  "id": "case-001",
+  "title": "Case #1",
+  "size": 5,
+  "difficulty": "easy",
+  "rooms": [
+   "Dining Room",
+   "Garden",
+   "Bathroom"
+  ]
+ },
+ {
+  "id": "case-002",
+  "title": "Case #2",
+  "size": 5,
+  "difficulty": "medium",
+  "rooms": [
+   "Hallway",
+   "Living Room",
+   "Library"
+  ]
+ },
+ {
+  "id": "case-003",
+  "title": "Case #3",
+  "size": 6,
+  "difficulty": "easy",
+  "rooms": [
+   "Library",
+   "Study",
+   "Dining Room",
+   "Bathroom"
+  ]
+ },
+ {
+  "id": "case-004",
+  "title": "Case #4",
+  "size": 6,
+  "difficulty": "medium",
+  "rooms": [
+   "Library",
+   "Living Room",
+   "Bathroom",
+   "Garden",
+   "Hallway"
+  ]
+ },
+ {
+  "id": "case-005",
+  "title": "Case #5",
+  "size": 6,
+  "difficulty": "hard",
+  "rooms": [
+   "Bedroom",
+   "Study",
+   "Garage",
+   "Hallway",
+   "Bathroom"
+  ]
+ },
+ {
+  "id": "case-006",
+  "title": "Case #6",
+  "size": 7,
+  "difficulty": "medium",
+  "rooms": [
+   "Garage",
+   "Garden",
+   "Dining Room",
+   "Kitchen",
+   "Library"
+  ]
+ },
+ {
+  "id": "case-007",
+  "title": "Case #7",
+  "size": 7,
+  "difficulty": "hard",
+  "rooms": [
+   "Garage",
+   "Dining Room",
+   "Study",
+   "Bedroom",
+   "Bathroom"
+  ]
+ },
+ {
+  "id": "case-008",
+  "title": "Case #8",
+  "size": 5,
+  "difficulty": "easy",
+  "rooms": [
+   "Hallway",
+   "Garden",
+   "Dining Room"
+  ]
+ },
+ {
+  "id": "case-009",
+  "title": "Case #9",
+  "size": 5,
+  "difficulty": "medium",
+  "rooms": [
+   "Bathroom",
+   "Kitchen",
+   "Library",
+   "Study"
+  ]
+ },
+ {
+  "id": "case-010",
+  "title": "Case #10",
+  "size": 6,
+  "difficulty": "easy",
+  "rooms": [
+   "Garage",
+   "Study",
+   "Garden",
+   "Bedroom"
+  ]
+ },
+ {
+  "id": "case-011",
+  "title": "Case #11",
+  "size": 6,
+  "difficulty": "medium",
+  "rooms": [
+   "Hallway",
+   "Library",
+   "Dining Room",
+   "Study"
+  ]
+ },
+ {
+  "id": "case-012",
+  "title": "Case #12",
+  "size": 6,
+  "difficulty": "hard",
+  "rooms": [
+   "Kitchen",
+   "Study",
+   "Bathroom",
+   "Library"
+  ]
+ },
+ {
+  "id": "case-013",
+  "title": "Case #13",
+  "size": 7,
+  "difficulty": "medium",
+  "rooms": [
+   "Kitchen",
+   "Living Room",
+   "Library",
+   "Garden"
+  ]
+ },
+ {
+  "id": "case-014",
+  "title": "Case #14",
+  "size": 7,
+  "difficulty": "hard",
+  "rooms": [
+   "Hallway",
+   "Study",
+   "Garden",
+   "Kitchen",
+   "Garage"
+  ]
+ },
+ {
+  "id": "case-015",
+  "title": "Case #15",
+  "size": 5,
+  "difficulty": "easy",
+  "rooms": [
+   "Bedroom",
+   "Study",
+   "Hallway"
+  ]
+ },
+ {
+  "id": "case-016",
+  "title": "Case #16",
+  "size": 5,
+  "difficulty": "medium",
+  "rooms": [
+   "Library",
+   "Kitchen",
+   "Hallway",
+   "Living Room"
+  ]
+ },
+ {
+  "id": "case-017",
+  "title": "Case #17",
+  "size": 6,
+  "difficulty": "easy",
+  "rooms": [
+   "Dining Room",
+   "Bathroom",
+   "Living Room",
+   "Hallway",
+   "Library"
+  ]
+ },
+ {
+  "id": "case-018",
+  "title": "Case #18",
+  "size": 6,
+  "difficulty": "medium",
+  "rooms": [
+   "Hallway",
+   "Living Room",
+   "Garden",
+   "Library",
+   "Bedroom"
+  ]
+ },
+ {
+  "id": "case-019",
+  "title": "Case #19",
+  "size": 6,
+  "difficulty": "hard",
+  "rooms": [
+   "Dining Room",
+   "Garden",
+   "Hallway",
+   "Living Room"
+  ]
+ },
+ {
+  "id": "case-020",
+  "title": "Case #20",
+  "size": 7,
+  "difficulty": "medium",
+  "rooms": [
+   "Hallway",
+   "Bathroom",
+   "Living Room",
+   "Library",
+   "Garden",
+   "Garage"
+  ]
+ },
+ {
+  "id": "case-021",
+  "title": "Case #21",
+  "size": 7,
+  "difficulty": "hard",
+  "rooms": [
+   "Bathroom",
+   "Kitchen",
+   "Dining Room",
+   "Library"
+  ]
+ }
+]
