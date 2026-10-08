@@ -416,3 +416,7 @@ details p { margin: 6px 0 0; color: var(--muted); }
 .board-wrap.solving .stamp span { animation: stampIn .35s ease-in backwards; animation-delay: var(--stamp-delay, 1.6s); }
 @keyframes stampIn { from { transform: rotate(-20deg) scale(2.4); opacity: 0; } to { transform: rotate(-20deg) scale(1); opacity: .92; } }
 .no-anim .board-wrap.solving .token, .no-anim .board-wrap.solving .stamp span { animation: none; }
+
+/* multi-square furniture: one tile drawn from the first square across the rest */
+.obj.head { z-index: 2; }
+.obj.tail { visibility: hidden; }

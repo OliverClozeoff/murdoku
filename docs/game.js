@@ -133,6 +133,18 @@ function fmt(text) {
   return t.replace(/\*([^*]+)\*/g, "<b>$1</b>");
 }
 
+// Fingerprint of a case's floor plan. Saves are tied to it, so regenerating the
+// puzzles never loads old progress into a different case with the same number.
+function sigOf(grid) {
+  let h = 2166136261;
+  for (const ch of JSON.stringify(grid)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return (h >>> 0).toString(36);
+}
+function loadSave(id, grid) {
+  const saved = store.get(id);
+  return saved && saved.sig === sigOf(grid) ? saved : null;
+}
+
 const fmtTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 /* ---------------- routing & home ---------------- */
@@ -166,7 +178,7 @@ function showHome() {
   document.title = "Murdoku";
   els.list.innerHTML = "";
   for (const p of index) {
-    const saved = store.get(p.id);
+    const saved = p.grid ? loadSave(p.id, p.grid) : null;
     const a = document.createElement("a");
     a.className = "case-card";
     a.href = "#" + p.id;
@@ -185,7 +197,7 @@ function showHome() {
 async function openCase(id) {
   puzzle = await (await fetch(`puzzles/${id}.json`, { cache: "no-cache" })).json();
   secret = JSON.parse(atob(puzzle.secret));
-  state = Object.assign(freshState(), store.get(id) || {});
+  state = Object.assign(freshState(), loadSave(id, puzzle.grid) || {});
   history = [];
   selected = puzzle.people.findIndex((_, i) => !state.pos[i]);
   if (selected < 0) selected = null;
@@ -272,7 +284,18 @@ function buildBoard() {
           if (rr >= 0 && rr < n && cc >= 0 && cc < n && objectAt[idx(rr, cc)] === k) tile.style[side] = "-1px";
         }
         const first = o.cells[0][0] === r && o.cells[0][1] === c;
-        if (first && o.icon) tile.innerHTML = `<span class="icon">${o.icon}</span>`;
+        if (first) {
+          tile.classList.add("head");
+          if (o.cells.length > 1) {
+            // stretch the head tile over the whole object so it reads as one piece
+            const [r2, c2] = o.cells[o.cells.length - 1];
+            tile.style.right = `calc(${-(c2 - c) * 100}% + 8%)`;
+            tile.style.bottom = `calc(${-(r2 - r) * 100}% + 8%)`;
+          }
+          if (o.icon) tile.innerHTML = `<span class="icon">${o.icon}</span>`;
+        } else if (o.cells.length > 1) {
+          tile.classList.add("tail");  // covered by the head tile
+        }
         cell.append(tile);
         if (!o.occupiable) cell.classList.add("blocked");
       }
@@ -486,7 +509,7 @@ function snapshot() {
 }
 
 function save() {
-  store.set(puzzle.id, state);
+  store.set(puzzle.id, Object.assign({}, state, { sig: sigOf(puzzle.grid) }));
 }
 
 function locked() {

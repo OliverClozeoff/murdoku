@@ -131,10 +131,11 @@ def unary_holds(clue: Clue, cell: Cell, board: Board) -> bool:
         case "on": return board.obj_type(cell) == clue.obj
         case "not_on": return board.obj_type(cell) != clue.obj
         case "on_in": return board.obj_type(cell) == clue.obj and board.room(cell) == clue.room
-        case "beside_obj": return board.beside_object(cell, clue.obj)
+        # Lenient on purpose: see Board.beside_object. true_clues() uses the strict reading.
+        case "beside_obj": return board.beside_object(cell, clue.obj, lenient=True)
         case "corner": return board.is_corner(cell)
-        case "row_obj": return board.line_has_object(cell, clue.obj, "row")
-        case "col_obj": return board.line_has_object(cell, clue.obj, "col")
+        case "row_obj": return board.line_has_object(cell, clue.obj, "row", lenient=True)
+        case "col_obj": return board.line_has_object(cell, clue.obj, "col", lenient=True)
         case "row_is": return cell[0] == clue.k
         case "col_is": return cell[1] == clue.k
     raise ValueError(clue.kind)

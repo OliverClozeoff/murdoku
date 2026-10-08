@@ -123,21 +123,27 @@ class Board:
         vertical = wall(r, c - 1) or wall(r, c + 1)
         return horizontal and vertical
 
-    def beside_object(self, cell: Cell, obj_type: str) -> bool:
-        """Orthogonally next to a *different* object of this type, in the same room."""
-        own = self.obj(cell)
+    # Is someone lying in one half of a bed "beside a bed"? Players read it both ways.
+    # Clues are only written when they hold under the strict reading (a different object),
+    # but uniqueness is checked under the lenient one (own object counts too), so a case
+    # never depends on which reading the player picks.
+    def beside_object(self, cell: Cell, obj_type: str, lenient: bool = False) -> bool:
+        """Orthogonally next to an object of this type, in the same room."""
+        own = -1 if lenient else self.obj(cell)
         for n in self.same_room_neighbors(cell):
             o = self.obj(n)
             if o >= 0 and o != own and self.objects[o].type == obj_type:
                 return True
         return False
 
-    def line_has_object(self, cell: Cell, obj_type: str, axis: str) -> bool:
-        """Same row (axis='row') or column as another object of this type."""
-        own = self.obj(cell)
+    def line_has_object(self, cell: Cell, obj_type: str, axis: str, lenient: bool = False) -> bool:
+        """Same row (axis='row') or column as an object of this type (not counting your own square)."""
+        own = -1 if lenient else self.obj(cell)
         r, c = cell
         line = [(r, k) for k in range(self.size)] if axis == "row" else [(k, c) for k in range(self.size)]
         for other in line:
+            if other == cell:
+                continue
             o = self.obj(other)
             if o >= 0 and o != own and self.objects[o].type == obj_type:
                 return True
