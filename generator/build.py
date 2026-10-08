@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -28,9 +29,12 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=Path(__file__).parent.parent / "docs" / "puzzles")
     args = ap.parse_args()
 
-    args.out.mkdir(parents=True, exist_ok=True)
-    for old in args.out.glob("*.json"):
-        old.unlink()
+    # Build into a scratch folder and swap it in at the end, so docs/puzzles is never
+    # half-written (pushing mid-build would otherwise publish a broken site).
+    tmp = args.out.with_name(args.out.name + ".building")
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    tmp.mkdir(parents=True)
 
     index = []
     for i in range(args.count):
@@ -41,7 +45,7 @@ def main() -> None:
         pid = f"case-{i + 1:03d}"
         puzzle["id"] = pid
         puzzle["title"] = f"Case #{i + 1}"
-        (args.out / f"{pid}.json").write_text(json.dumps(puzzle, ensure_ascii=False), encoding="utf-8")
+        (tmp / f"{pid}.json").write_text(json.dumps(puzzle, ensure_ascii=False), encoding="utf-8")
         blocked = sorted({r * size + c for o in puzzle["objects"] if not o["occupiable"] for r, c in o["cells"]})
         index.append({"id": pid, "title": puzzle["title"], "size": size, "difficulty": difficulty,
                       "rooms": [r["name"] for r in puzzle["rooms"]],
@@ -49,7 +53,10 @@ def main() -> None:
                       "grid": puzzle["grid"], "colors": [r["color"] for r in puzzle["rooms"]], "blocked": blocked})
         print(f"{pid}: {size}x{size} {difficulty:<6} steps={puzzle['stats']}  {time.perf_counter() - t:.1f}s")
 
-    (args.out / "index.json").write_text(json.dumps(index, separators=(",", ":")), encoding="utf-8")
+    (tmp / "index.json").write_text(json.dumps(index, separators=(",", ":")), encoding="utf-8")
+    if args.out.exists():
+        shutil.rmtree(args.out)
+    tmp.rename(args.out)
     print(f"Wrote {len(index)} puzzles to {args.out}")
 
 
