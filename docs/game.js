@@ -303,23 +303,17 @@ function buildBoard() {
       if (k >= 0) {
         const o = puzzle.objects[k];
         const tile = document.createElement("div");
-        tile.className = "obj " + (o.type === "carpet" || o.type === "pond" ? o.type : o.occupiable ? "open" : "block");
-        for (const [dr, dc, side] of [[-1, 0, "top"], [1, 0, "bottom"], [0, -1, "left"], [0, 1, "right"]]) {
-          const rr = r + dr, cc = c + dc;
-          if (rr >= 0 && rr < n && cc >= 0 && cc < n && objectAt[idx(rr, cc)] === k) tile.style[side] = "-1px";
-        }
-        const first = o.cells[0][0] === r && o.cells[0][1] === c;
-        if (first) {
-          tile.classList.add("head");
-          if (o.cells.length > 1) {
-            // stretch the head tile over the whole object so it reads as one piece
-            const [r2, c2] = o.cells[o.cells.length - 1];
-            tile.style.right = `calc(${-(c2 - c) * 100}% + 8%)`;
-            tile.style.bottom = `calc(${-(r2 - r) * 100}% + 8%)`;
-          }
-          if (o.icon) tile.innerHTML = `<span class="icon">${o.icon}</span>`;
-        } else if (o.cells.length > 1) {
-          tile.classList.add("tail");  // covered by the head tile
+        const rows = o.cells.map(x => x[0]), cols = o.cells.map(x => x[1]);
+        const top = Math.min(...rows), left = Math.min(...cols);
+        const h = Math.max(...rows) - top + 1, w = Math.max(...cols) - left + 1;
+        const art = Art.svg(o.type, w, h, k);
+        if (r === top && c === left) {
+          // One drawing over the whole footprint, so a two-square table is one table.
+          tile.className = "obj head " + (art ? "art " : "") + (o.occupiable ? "open" : "block");
+          tile.style.inset = `3% calc(${-(w - 1) * 100}% + 3%) calc(${-(h - 1) * 100}% + 3%) 3%`;
+          tile.innerHTML = art || (o.icon ? `<span class="icon">${o.icon}</span>` : "");
+        } else {
+          tile.className = "obj tail";  // covered by the head tile
         }
         cell.append(tile);
         if (!o.occupiable) cell.classList.add("blocked");

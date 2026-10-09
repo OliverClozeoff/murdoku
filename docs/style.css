@@ -441,3 +441,10 @@ details p { margin: 6px 0 0; color: var(--muted); }
 .cards.many .portrait { width: 80%; }
 .cards.many .nameplate { font-size: 11px; padding: 0 5px; }
 .cards.many .clue-box { font-size: 11px; padding: 12px 5px 6px; min-height: 52px; }
+
+/* drawn furniture (art.js): no tile behind it, the drawing is the object */
+.obj.art { background: none; border: 0; box-shadow: none; border-radius: 0; }
+.obj.art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.obj.art.block svg { filter: drop-shadow(0 calc(var(--cell) * .05) 0 rgba(0, 0, 0, .28)); }
+.cell.ref-obj .obj.art { outline: none; }
+.cell.ref-obj .obj.art svg { filter: drop-shadow(0 0 3px var(--hi)) drop-shadow(0 0 3px var(--hi)); }
