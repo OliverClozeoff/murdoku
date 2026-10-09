@@ -420,3 +420,14 @@ details p { margin: 6px 0 0; color: var(--muted); }
 /* multi-square furniture: one tile drawn from the first square across the rest */
 .obj.head { z-index: 2; }
 .obj.tail { visibility: hidden; }
+
+/* bug report form */
+.report-body { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
+.report-body textarea {
+  width: 100%; resize: vertical; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--surface); color: var(--ink); font: 14px/1.4 system-ui, sans-serif;
+}
+.report-body textarea:focus { outline: none; border-color: var(--ink); }
+.report-body .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.report-body .row-btns { justify-content: flex-end; margin-top: 4px; }
+.small { font-size: 13px; }

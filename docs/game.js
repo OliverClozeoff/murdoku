@@ -199,8 +199,8 @@ async function openCase(id) {
   secret = JSON.parse(atob(puzzle.secret));
   state = Object.assign(freshState(), loadSave(id, puzzle.grid) || {});
   history = [];
-  selected = puzzle.people.findIndex((_, i) => !state.pos[i]);
-  if (selected < 0) selected = null;
+  computeOrder();
+  selected = firstUnplaced();
   setTool("note");
 
   els.home.hidden = true;
@@ -220,6 +220,20 @@ async function openCase(id) {
     setTimeout(() => els.board.classList.remove("opening"), 900);
   }
 }
+
+// Cards, picker and notes list people alphabetically with the victim last.
+// Puzzle data keeps its own order (the answer refers to it), so this is display-only.
+let order = [];  // display position -> person index
+let rank = [];   // person index -> display position
+function computeOrder() {
+  order = puzzle.people.map((_, k) => k).sort((a, b) => {
+    const pa = puzzle.people[a], pb = puzzle.people[b];
+    return (pa.victim - pb.victim) || pa.name.localeCompare(pb.name);
+  });
+  rank = [];
+  order.forEach((k, i) => (rank[k] = i));
+}
+const firstUnplaced = () => order.find(k => !state.pos[k]) ?? null;
 
 function freshState() {
   const n = puzzle.size;
@@ -342,7 +356,8 @@ function buildCards() {
   buildPicker();
   els.facts.innerHTML = (puzzle.facts || []).map(f => `<div class="fact">${fmt(f.text)}</div>`).join("");
   els.cards.innerHTML = "";
-  puzzle.people.forEach((p, k) => {
+  order.forEach(k => {
+    const p = puzzle.people[k];
     const card = document.createElement("div");
     card.className = "card" + (p.victim ? " victim" : "");
     card.dataset.k = k;
@@ -382,7 +397,8 @@ function buildCards() {
 function buildPicker() {
   const picker = $("#picker");
   picker.innerHTML = "";
-  puzzle.people.forEach((p, k) => {
+  order.forEach(k => {
+    const p = puzzle.people[k];
     const b = document.createElement("button");
     b.type = "button";
     b.className = "pick" + (p.victim ? " victim" : "");
@@ -394,11 +410,13 @@ function buildPicker() {
 }
 
 function renderCards() {
-  $$(".pick").forEach((b, k) => {
+  $$(".pick").forEach((b, i) => {
+    const k = order[i];
     b.setAttribute("aria-pressed", k === selected);
     b.classList.toggle("placed", !!state.pos[k]);
   });
-  $$(".card", els.cards).forEach((card, k) => {
+  $$(".card", els.cards).forEach(card => {
+    const k = Number(card.dataset.k);
     card.classList.toggle("selected", k === selected);
     card.classList.toggle("placed", !!state.pos[k]);
     card.classList.toggle("struck", state.struck.includes(k));
@@ -488,7 +506,7 @@ function renderBoard() {
       for (const k of state.notes[i]) {
         const s = document.createElement("span");
         s.textContent = people[k].letter;
-        s.style.gridArea = `${Math.floor(k / 3) % 3 + 1} / ${(k % 3) + 1}`;
+        s.style.gridArea = `${Math.floor(rank[k] / 3) % 3 + 1} / ${(rank[k] % 3) + 1}`;
         if (people[k].victim) s.classList.add("victim");
         if (k === selected) s.classList.add("sel");
         box.append(s);
@@ -561,8 +579,8 @@ function place(i) {
   placeAt(selected, i);
   // after placing, move the selection on to the next unplaced character
   if (state.pos[selected]) {
-    const next = puzzle.people.findIndex((_, k) => !state.pos[k]);
-    if (next >= 0) selected = next;
+    const next = firstUnplaced();
+    if (next !== null) selected = next;
   }
   afterChange();
   if (state.pos.every(Boolean)) toast("Everyone's placed. Press Submit when you're sure.");
@@ -981,6 +999,65 @@ function renderOptions() {
   replay.querySelector("button").addEventListener("click", () => { els.options.close(); openTutorial(); });
   list.append(replay);
 }
+
+/* ---------------- bug reports ---------------- */
+
+// Reports go to the repository's GitHub Issues: a static site can't write files into the
+// repo without exposing a key that would let anyone edit it.
+const REPO = "OliverClozeoff/murdoku";
+
+function boardSnapshot() {
+  // One line per row: letters for people, x for X marks, # for blocking furniture, . for empty.
+  const n = puzzle.size;
+  const rows = [];
+  for (let r = 0; r < n; r++) {
+    let line = "";
+    for (let c = 0; c < n; c++) {
+      const i = idx(r, c);
+      const who = occupantOf(i);
+      line += who >= 0 ? puzzle.people[who].letter : isBlocked(i) ? "#" : state.x[i] ? "x" : ".";
+    }
+    rows.push(line);
+  }
+  return rows.join("\n");
+}
+
+function reportText() {
+  const lines = [$("#report-text").value.trim() || "(no description)", ""];
+  if (puzzle) {
+    lines.push(`Case: ${puzzle.title} (${puzzle.id}, ${puzzle.size}x${puzzle.size} ${puzzle.difficulty})`);
+    if ($("#report-board").checked) lines.push("Board:", "```", boardSnapshot(), "```");
+  } else {
+    lines.push("Page: case list");
+  }
+  lines.push(`Browser: ${navigator.userAgent}`, `Page: ${location.href}`);
+  return lines.join("\n");
+}
+
+$$("[data-report]").forEach(b => b.addEventListener("click", () => {
+  $("#report-where").textContent = puzzle ? `About ${puzzle.title} (${puzzle.size}×${puzzle.size} ${puzzle.difficulty})` : "About the game";
+  $("#report-board").closest("label").hidden = !puzzle;
+  $("#report").showModal();
+  $("#report-text").focus();
+}));
+
+$("#report-copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(reportText());
+    toast("Report copied. Paste it into a message.");
+  } catch {
+    toast("Couldn't copy automatically. Select the text and copy it by hand.");
+  }
+});
+
+$("#report-send").addEventListener("click", () => {
+  const first = ($("#report-text").value.trim().split("\n")[0] || "Bug report").slice(0, 70);
+  const title = `${puzzle ? puzzle.title + ": " : ""}${first}`;
+  const url = `https://github.com/${REPO}/issues/new?labels=bug&title=${encodeURIComponent(title)}&body=${encodeURIComponent(reportText())}`;
+  window.open(url, "_blank", "noopener");
+  $("#report").close();
+  $("#report-text").value = "";
+});
 
 /* ---------------- timer & toast ---------------- */
 

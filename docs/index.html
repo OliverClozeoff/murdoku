@@ -6,7 +6,7 @@
   <title>Murdoku</title>
   <meta name="description" content="Logic murder mysteries: place everyone on the floor plan and find who was alone with the victim.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <!-- ============ Case list ============ -->
@@ -14,6 +14,7 @@
     <header class="home-head">
       <div class="brand">Murdoku</div>
       <div class="home-actions">
+        <button class="btn ghost" data-report type="button">Report bug</button>
         <button class="btn ghost" data-open="help" type="button">How to play</button>
         <button class="icon-btn" data-open="options" type="button" aria-label="Options">⚙</button>
       </div>
@@ -66,6 +67,7 @@
         <button class="tool sq" id="tool-sound" type="button" title="Sound on/off">🔊</button>
         <button class="tool sq" data-open="options" type="button" title="Options">⚙</button>
       </div>
+      <button class="tool subtle" data-report type="button">Report bug</button>
       <button class="tool subtle" id="tool-reveal" type="button">Give up</button>
     </aside>
   </section>
@@ -194,6 +196,24 @@
     </div>
   </dialog>
 
+  <dialog id="report" class="modal report">
+    <div class="help-head">
+      <h2>Report a bug</h2>
+      <button class="icon-btn small" data-close type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="report-body">
+      <p class="muted small" id="report-where"></p>
+      <label for="report-text"><b>What went wrong?</b></label>
+      <textarea id="report-text" rows="6" placeholder="e.g. I think Case #12 has two answers: Hugo could also be at R3 C4…"></textarea>
+      <label class="check"><input type="checkbox" id="report-board" checked> Include my current board</label>
+      <div class="row-btns">
+        <button class="btn" id="report-copy" type="button">Copy report</button>
+        <button class="btn primary" id="report-send" type="button">Send on GitHub</button>
+      </div>
+      <p class="muted small">“Send on GitHub” opens a pre-filled bug report on the game’s GitHub page (needs a free GitHub account). No account? Use “Copy report” and send it by message instead.</p>
+    </div>
+  </dialog>
+
   <dialog id="options" class="modal options">
     <div class="help-head">
       <h2>Options</h2>
@@ -202,7 +222,7 @@
     <div class="opt-list" id="opt-list"></div>
   </dialog>
 
-  <script src="avatar.js?v=4"></script>
-  <script src="game.js?v=4"></script>
+  <script src="avatar.js?v=5"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>
