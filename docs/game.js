@@ -7,7 +7,7 @@
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-const HOLD_MS = 380;
+const HOLD_MS = 300;
 const SAVE_PREFIX = "murdoku:v2:";
 
 const store = {
@@ -406,7 +406,7 @@ function renderCards() {
 }
 
 function select(k) {
-  selected = selected === k ? null : k;
+  selected = k;  // clicking the selected card again keeps it selected, like the original
   renderCards();
   renderBoard();
   if (selected !== null) $("#hint-line").innerHTML = `<b>${esc(puzzle.people[selected].name)}</b> selected: tap a square for a note, <b>press &amp; hold</b> to place.`;
@@ -736,6 +736,15 @@ els.board.addEventListener("pointercancel", () => {
 });
 els.board.addEventListener("pointerleave", () => hoverCell(null));
 els.board.addEventListener("contextmenu", e => e.preventDefault());
+// Mouse shortcut: double-click places the selected character. The two clicks before it
+// toggled a note on and off again, so the board is otherwise unchanged.
+els.board.addEventListener("dblclick", e => {
+  if (!puzzle || tool !== "note") return;
+  const i = cellIndexAt(e.clientX, e.clientY);
+  if (i === null || isBlocked(i) || locked()) return;
+  history.splice(-2);  // forget the two note toggles so Undo removes the placement in one step
+  place(i);
+});
 
 let hoverRoom = -1;
 function hoverCell(i) {

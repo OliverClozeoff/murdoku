@@ -6,7 +6,7 @@
   <title>Murdoku</title>
   <meta name="description" content="Logic murder mysteries: place everyone on the floor plan and find who was alone with the victim.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <!-- ============ Case list ============ -->
@@ -47,7 +47,7 @@
         <div id="board" class="board" aria-label="Floor plan"></div>
       </div>
       <div id="picker" class="picker" aria-label="Characters"></div>
-      <p class="hint-line muted" id="hint-line">Select a character, then <b>tap</b> a square for a note or <b>press &amp; hold</b> to place them.</p>
+      <p class="hint-line muted" id="hint-line">Select a character, then <b>tap</b> a square for a note or <b>press &amp; hold</b> (double-click) to place them.</p>
     </div>
 
     <aside class="side-right" aria-label="Tools">
@@ -138,7 +138,8 @@
       <ul>
         <li><b>Tap a character card</b> to select them. Press &amp; hold a card to cross them off.</li>
         <li><b>Tap a square</b>: add or remove a small note.</li>
-        <li><b>Press &amp; hold a square</b>: place the character (hold again to pick them up).</li>
+        <li><b>Press &amp; hold a square</b> (or <b>double-click</b> with a mouse): place the character. Do it again to pick them up.</li>
+        <li><b>Right-click</b> a square: mark it with an X.</li>
         <li><b>Drag</b>: paint notes across squares.</li>
       </ul>
       <h3>Tools</h3>
@@ -162,6 +163,12 @@
         <dt>north / south / west / east of</dt><dd>Any square in a row above / below, or a column to the left / right, anywhere on the grid.</dd>
         <dt>exactly one row north of</dt><dd>In the row directly above, any column.</dd>
         <dt>top row / westernmost column</dt><dd>The edge lines of the whole grid.</dd>
+        <dt>first or second column / top two rows</dt><dd>Either of the two lines at that edge of the grid.</dd>
+        <dt>someone</dt><dd>Any other person, the victim included. “Two rows north of her, someone was beside a plant” means at least one person in the row two above hers stood beside a plant.</dd>
+        <dt>a Bedroom / the other Bedroom</dt><dd>When a house has two rooms of the same kind (North and South Bedroom), “a Bedroom” means either one, and “the other Bedroom” is the one this person is not in.</dd>
+        <dt>a woman / a man</dt><dd>At least one person of that gender, as shown by she/he on their card.</dd>
+        <dt>beside a wall, empty room on the other side</dt><dd>Next to a wall, and the room directly behind that wall had nobody in it.</dd>
+        <dt>… or …</dt><dd>At least one of the two is true.</dd>
       </dl>
     </div>
     <div class="tab-panel" data-panel="tips" hidden>
@@ -195,7 +202,7 @@
     <div class="opt-list" id="opt-list"></div>
   </dialog>
 
-  <script src="avatar.js"></script>
-  <script src="game.js"></script>
+  <script src="avatar.js?v=4"></script>
+  <script src="game.js?v=4"></script>
 </body>
 </html>

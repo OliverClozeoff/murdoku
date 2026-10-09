@@ -36,18 +36,20 @@ OBJECT_TYPES: dict[str, ObjectType] = {t.key: t for t in [
     ObjectType("pond", "pond", "", False, "", (1, 2)),  # water you can't stand in (drawn with CSS)
 ]}
 
-# Room name -> (floor color, floor texture, object types that may appear there)
-ROOM_TYPES: dict[str, tuple[str, str, list[str]]] = {
-    "Kitchen": ("#f7e2a0", "checker", ["table", "chair", "sink", "plant"]),
-    "Living Room": ("#c3d9f3", "planks", ["sofa", "tv", "carpet", "plant", "chair"]),
-    "Bedroom": ("#f4c8da", "planks", ["bed", "carpet", "shelf", "plant"]),
-    "Study": ("#d8cdf3", "planks", ["shelf", "chair", "table", "carpet"]),
-    "Dining Room": ("#f7cbb0", "checker", ["table", "chair", "plant"]),
-    "Library": ("#dcc5a5", "planks", ["shelf", "chair", "carpet", "sofa"]),
-    "Bathroom": ("#b7e4e6", "tiles", ["bathtub", "sink", "carpet"]),
-    "Garden": ("#c4e5b1", "grass", ["tree", "bench", "plant", "pond"]),
-    "Hallway": ("#e4e1da", "tiles", ["carpet", "plant", "shelf"]),
-    "Garage": ("#c3c8d2", "concrete", ["car", "toolbox", "shelf"]),
+# Room type -> (floor color, floor texture, object types that may appear there, may appear twice)
+# A type that appears twice gets positional names ("North Bedroom" / "South Bedroom"),
+# which enables clues like "in a Bedroom" or "a woman was in the other Bedroom".
+ROOM_TYPES: dict[str, tuple[str, str, list[str], bool]] = {
+    "Kitchen": ("#f7e2a0", "checker", ["table", "chair", "sink", "plant"], False),
+    "Living Room": ("#c3d9f3", "planks", ["sofa", "tv", "carpet", "plant", "chair"], False),
+    "Bedroom": ("#f4c8da", "planks", ["bed", "carpet", "shelf", "plant"], True),
+    "Study": ("#d8cdf3", "planks", ["shelf", "chair", "table", "carpet"], True),
+    "Dining Room": ("#f7cbb0", "checker", ["table", "chair", "plant"], False),
+    "Library": ("#dcc5a5", "planks", ["shelf", "chair", "carpet", "sofa"], False),
+    "Bathroom": ("#b7e4e6", "tiles", ["bathtub", "sink", "carpet"], True),
+    "Garden": ("#c4e5b1", "grass", ["tree", "bench", "plant", "pond"], True),
+    "Hallway": ("#e4e1da", "tiles", ["carpet", "plant", "shelf"], True),
+    "Garage": ("#c3c8d2", "concrete", ["car", "toolbox", "shelf"], False),
 }
 
 # (name, gender) - initials must be unique; only the victim may start with V.
@@ -75,10 +77,20 @@ class Board:
     room_names: list[str]
     objects: list[PlacedObject] = field(default_factory=list)
     obj_of: list[list[int]] = field(default_factory=list)  # object index per cell, -1 = none
+    room_types: list[str] = field(default_factory=list)   # "Bedroom" for both "North/South Bedroom"
 
     def __post_init__(self) -> None:
         if not self.obj_of:
             self.obj_of = [[-1] * self.size for _ in range(self.size)]
+        if not self.room_types:
+            self.room_types = list(self.room_names)
+        self.room_cells: list[list[Cell]] = [[] for _ in self.room_names]
+        for r in range(self.size):
+            for c in range(self.size):
+                self.room_cells[self.room_of[r][c]].append((r, c))
+
+    def rooms_of_type(self, rtype: str) -> list[int]:
+        return [i for i, t in enumerate(self.room_types) if t == rtype]
 
     # --- geometry helpers -------------------------------------------------
     @property

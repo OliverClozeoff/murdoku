@@ -22,7 +22,7 @@ def rc(cell: Cell) -> str:
 def explain(board: Board, victim: int, clues: list[Clue], solution: list[Cell],
             people: People) -> tuple[list[dict], dict]:
     n = len(solution)
-    cons = Constraints(board, n, victim, clues)
+    cons = Constraints(board, n, victim, clues, people.genders)
     names = people.names
     pos: list[Cell | None] = [None] * n
     count: dict[int, int] = defaultdict(int)

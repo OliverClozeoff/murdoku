@@ -32,7 +32,9 @@ Then open http://localhost:8000. Opening `index.html` directly from disk won't w
 
 ## Extending
 
-- **Rooms and furniture:** `ROOM_TYPES` and `OBJECT_TYPES` in `generator/murdoku/model.py`.
+- **Rooms and furniture:** `ROOM_TYPES` and `OBJECT_TYPES` in `generator/murdoku/model.py`. A room type marked repeatable can appear twice in one house ("North/South Bedroom"), which enables clues like "a woman was in the other Bedroom". Floor plans are built from rectangles in `make_rooms` (`generator/murdoku/generate.py`).
 - **Names:** `SUSPECTS` and `VICTIMS` (name and gender, for She/He in clues) in the same file. Initials must be unique, and only the victim may start with V.
 - **Motives:** `MOTIVES` in `generator/murdoku/story.py`.
-- **Clue types:** add them in `generator/murdoku/clues.py` (`render`, `refs`, a `*_holds` check, and `true_clues`). The solver and hint engine pick them up through the `UNARY` and `BINARY` sets.
+- **Clue types:** add them in `generator/murdoku/clues.py` (`render`, `refs`, a `*_holds` check, and `true_clues`). The solver and hint engine pick them up through the `UNARY`, `BINARY` and `EXISTS` sets; `EXISTS` clues ("someone was …") also need a `target_cells` rule saying which squares that someone could be on.
+
+**After changing `docs/` code:** bump the `?v=` number on the `style.css`, `avatar.js` and `game.js` links in `docs/index.html` so browsers fetch the new files instead of cached ones.
