@@ -65,10 +65,20 @@ const Art = (() => {
       return s;
     },
 
+    // Front view: a top-down chair is just a brown square, this reads as a chair at a glance.
     chair() {
-      return `<rect x="22" y="30" width="56" height="54" rx="9" fill="#b0835a" ${line()}/>
-              <rect x="27" y="35" width="46" height="44" rx="6" fill="#c69a6e"/>
-              <rect x="18" y="14" width="64" height="18" rx="7" fill="#8f6a43" ${line()}/>`;
+      return `<ellipse cx="50" cy="93" rx="30" ry="4" fill="rgba(0,0,0,.16)"/>
+              <rect x="27" y="8" width="8" height="62" rx="3" fill="#8f6a43" ${line(3)}/>
+              <rect x="65" y="8" width="8" height="62" rx="3" fill="#8f6a43" ${line(3)}/>
+              <rect x="24" y="8" width="52" height="13" rx="5" fill="#a97b49" ${line(3)}/>
+              <rect x="40" y="21" width="6" height="34" fill="#a97b49" ${line(2)}/>
+              <rect x="54" y="21" width="6" height="34" fill="#a97b49" ${line(2)}/>
+              <rect x="31" y="72" width="6" height="16" fill="#6f5136" ${line(2)}/>
+              <rect x="63" y="72" width="6" height="16" fill="#6f5136" ${line(2)}/>
+              <path d="M24 55 H76 L84 66 H16 Z" fill="#c69a6e" ${line(3)}/>
+              <rect x="16" y="66" width="68" height="8" rx="2" fill="#a97b49" ${line(3)}/>
+              <rect x="18" y="74" width="8" height="18" rx="2" fill="#8f6a43" ${line(3)}/>
+              <rect x="74" y="74" width="8" height="18" rx="2" fill="#8f6a43" ${line(3)}/>`;
     },
 
     bathtub(L) {
@@ -108,16 +118,34 @@ const Art = (() => {
       return s;
     },
 
-    plant() {
-      const leaves = [0, 72, 144, 216, 288].map(a =>
-        `<ellipse cx="50" cy="28" rx="11" ry="22" fill="#5fae5a" ${line(3)} transform="rotate(${a} 50 50)"/>`).join("");
-      return `${leaves}<circle cx="50" cy="50" r="16" fill="#c46b4f" ${line(3)}/><circle cx="50" cy="50" r="9" fill="#6b4a33"/>`;
+    // Plants and trees are seen from the side (they stand up), everything else from above.
+    plant(L, seed) {
+      const tilt = (seed % 3) - 1;  // a little variety between plants
+      const leaf = (x, y, rx, ry, rot, c) =>
+        `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}" ${line(2.5)} transform="rotate(${rot + tilt * 6} ${x} ${y})"/>`;
+      return `<ellipse cx="50" cy="92" rx="24" ry="5" fill="rgba(0,0,0,.18)"/>
+              ${leaf(30, 38, 9, 24, -38, "#4f9e4c")}${leaf(70, 38, 9, 24, 38, "#4f9e4c")}
+              ${leaf(40, 30, 8, 25, -14, "#62b25c")}${leaf(60, 30, 8, 25, 14, "#62b25c")}
+              ${leaf(50, 26, 8, 26, 0, "#74c06a")}
+              <path d="M30 58 H70 L64 90 H36 Z" fill="#c46b4f" ${line(3)}/>
+              <rect x="27" y="54" width="46" height="10" rx="3" fill="#d6805f" ${line(3)}/>`;
     },
 
-    tree() {
-      return `<circle cx="50" cy="52" r="42" fill="#3f8a46" ${line()}/>
-              <circle cx="36" cy="40" r="20" fill="#56a65a"/><circle cx="62" cy="38" r="17" fill="#56a65a"/>
-              <circle cx="58" cy="64" r="18" fill="#4c9a50"/><circle cx="40" cy="38" r="8" fill="#7cc476"/>`;
+    tree(L, seed) {
+      const trunk = `<ellipse cx="50" cy="93" rx="30" ry="5" fill="rgba(0,0,0,.2)"/>
+                     <rect x="44" y="70" width="12" height="22" rx="3" fill="#7a5233" ${line(3)}/>`;
+      if (seed % 2 === 0) {
+        // pine: three stacked layers
+        return trunk + [[40, 78, 40], [22, 60, 32], [6, 42, 22]].map(([top, bottom, half], i) =>
+          `<path d="M50 ${top} L${50 + half} ${bottom} H${50 - half} Z" fill="${["#2f7a3f", "#38894a", "#43985a"][i]}" ${line(3)}/>`
+        ).join("");
+      }
+      // round leafy tree: bushy crown made of overlapping circles
+      return trunk + `<circle cx="50" cy="42" r="30" fill="#3f8a46" ${line(3)}/>
+                      <circle cx="32" cy="50" r="18" fill="#3f8a46" ${line(3)}/>
+                      <circle cx="68" cy="50" r="18" fill="#3f8a46" ${line(3)}/>
+                      <circle cx="50" cy="42" r="27" fill="#3f8a46"/>
+                      <circle cx="40" cy="32" r="10" fill="#5aa85c"/><circle cx="60" cy="40" r="8" fill="#5aa85c"/>`;
     },
 
     tv() {
