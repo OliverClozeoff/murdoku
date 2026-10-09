@@ -15,12 +15,17 @@ from .model import Board, Cell
 from .solver import Constraints
 
 
+LOOKAHEAD_MAX = 8  # only "what if" people with at most this many squares left
+
+
 def rc(cell: Cell) -> str:
     return f"R{cell[0] + 1} C{cell[1] + 1}"
 
 
 def explain(board: Board, victim: int, clues: list[Clue], solution: list[Cell],
-            people: People) -> tuple[list[dict], dict]:
+            people: People, stop_when_stuck: bool = False) -> tuple[list[dict], dict]:
+    """Solve step by step. With stop_when_stuck, return as soon as a guess would be needed:
+    stats["stuck"] then holds {person: squares still possible} for everyone not yet placed."""
     n = len(solution)
     cons = Constraints(board, n, victim, clues, people.genders)
     names = people.names
@@ -110,13 +115,18 @@ def explain(board: Board, victim: int, clues: list[Clue], solution: list[Cell],
         if progress:
             continue
 
-        # 3. look-ahead: a square is impossible if it leaves someone (or some line) with nothing
-        for p in free:
+        # 3. look-ahead: a square is impossible if it leaves someone (or some line) with nothing.
+        # Like a person would, only try this for people with a handful of squares left.
+        for p in sorted(free, key=lambda q: len(C[q])):
+            if len(C[p]) > LOOKAHEAD_MAX:
+                break
             for cell in C[p]:
                 pos[p] = cell
                 count[board.room(cell)] += 1
                 reason = None
-                rest = [q for q in free if q != p]
+                if not cons.counts_ok(pos, count, False):
+                    reason = "one of the statements could no longer come true"
+                rest = [q for q in free if q != p] if reason is None else []
                 rows: set[int] = set()
                 cols: set[int] = set()
                 for q in rest:
@@ -147,6 +157,9 @@ def explain(board: Board, victim: int, clues: list[Clue], solution: list[Cell],
             continue
 
         # 4. deep reasoning: name the person with the fewest options and give the answer
+        if stop_when_stuck:
+            stats["stuck"] = {q: C[q] for q in free}
+            return steps, stats
         p = min(free, key=lambda q: len(C[q]))
         stats["deep"] += 1
         others = [c for c in C[p] if c != solution[p]]

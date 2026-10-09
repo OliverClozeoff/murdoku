@@ -2,16 +2,20 @@
 from __future__ import annotations
 
 import base64
+from collections import Counter
 import json
 import random
 
-from .clues import ABSTRACT, STRENGTH, Clue, People, refs, render, true_clues
+from .clues import (ABSTRACT, STRENGTH, UNARY, Clue, People, holds_full, refs, render, true_clues,
+                    unary_holds)
 from .hints import explain
 from .model import OBJECT_TYPES, ROOM_TYPES, SUSPECTS, VICTIMS, Board, Cell, PlacedObject
-from .solver import solve
+from .solver import SearchLimit, solve
 from .story import make_motive
 
-ROOM_COUNT = {4: (2, 3), 5: (3, 4), 6: (4, 5), 7: (4, 6), 8: (5, 7), 9: (5, 7), 10: (6, 8)}
+SEARCH_BUDGET = 60_000  # nodes per uniqueness search before giving up on it
+ROOM_COUNT = {4: (2, 3), 5: (3, 4), 6: (4, 5), 7: (4, 6), 8: (5, 7), 9: (5, 7), 10: (6, 8),
+              11: (7, 9), 12: (7, 10), 13: (8, 11), 14: (9, 12), 15: (9, 13), 16: (10, 14)}
 MIN_ROOM_CELLS = 3
 
 
@@ -79,8 +83,8 @@ def make_rooms(size: int, rng: random.Random) -> list[list[int]] | None:
 
 
 def name_rooms(grid: list[list[int]], rng: random.Random) -> tuple[list[str], list[str]] | None:
-    """Pick a type per room. Often one type appears twice (never side by side); the pair
-    then gets positional names like "North Bedroom" / "South Bedroom"."""
+    """Pick a type per room. Some types appear twice (never side by side, bigger houses need
+    more of these); each pair gets positional names like "North Bedroom" / "South Bedroom"."""
     n_rooms = max(max(row) for row in grid) + 1
     size = len(grid)
     adjacent = set()
@@ -89,23 +93,28 @@ def name_rooms(grid: list[list[int]], rng: random.Random) -> tuple[list[str], li
             for rr, cc in ((r + 1, c), (r, c + 1)):
                 if rr < size and cc < size and grid[rr][cc] != grid[r][c]:
                     adjacent.add(frozenset((grid[r][c], grid[rr][cc])))
-    types = rng.sample(list(ROOM_TYPES), n_rooms)
-    if n_rooms >= 4 and rng.random() < 0.7:
-        apart = [(a, b) for a in range(n_rooms) for b in range(a + 1, n_rooms)
-                 if frozenset((a, b)) not in adjacent]
-        if not apart:
-            return None
-        twin = rng.choice([t for t, v in ROOM_TYPES.items() if v[3]])
-        a, b = rng.choice(apart)
-        rest = [t for t in types if t != twin][: n_rooms - 2]
-        types = []
-        for i in range(n_rooms):
-            types.append(twin if i in (a, b) else rest.pop())
+
+    base = list(ROOM_TYPES)
+    repeatable = [t for t, v in ROOM_TYPES.items() if v[3]]
+    n_twins = max(0, n_rooms - len(base)) + (1 if n_rooms >= 4 and rng.random() < 0.7 else 0)
+    if n_rooms >= 9 and rng.random() < 0.5:
+        n_twins += 1  # big houses: a second pair is fun
+    n_twins = min(n_twins, len(repeatable), n_rooms // 2)
+    if n_rooms - n_twins > len(base):
+        return None
+    twins = rng.sample(repeatable, n_twins)
+    singles = rng.sample([t for t in base if t not in twins], n_rooms - 2 * n_twins)
+    types = singles + twins * 2
+    for _ in range(300):
+        rng.shuffle(types)
+        if all(frozenset(i for i, x in enumerate(types) if x == t) not in adjacent for t in twins):
+            break
+    else:
+        return None
+
     names = list(types)
-    for t in set(types):
+    for t in twins:
         idxs = [i for i, x in enumerate(types) if x == t]
-        if len(idxs) != 2:
-            continue
         centers = []
         for i in idxs:
             cells = [(r, c) for r in range(size) for c in range(size) if grid[r][c] == i]
@@ -166,54 +175,165 @@ def place_objects(board: Board, solution: list[Cell], rng: random.Random) -> Non
             target -= 1
 
 
-def trim_clues(board: Board, n: int, victim: int, clues: list[Clue], difficulty: str,
-               rng: random.Random, genders: list[str]) -> list[Clue]:
-    """Drop clues one at a time as long as the solution stays unique.
-
-    Easy puzzles try to drop weak clues first (so the strong ones survive);
-    hard puzzles try to drop strong clues first.
-    """
-    jitter = {c: rng.random() * 2.5 for c in clues}
+def make_appeal(pool: list[Clue], difficulty: str, victim: int, rng: random.Random):
+    """Scoring for which clue to add next. Easy puzzles prefer strong clues ("in the Kitchen"),
+    hard ones weak clues ("beside a plant")."""
+    jitter = {c: rng.random() * 2.5 for c in pool}
     sign = {"easy": 1, "medium": 0, "hard": -1, "expert": -1}[difficulty]
 
-    def priority(c: Clue) -> float:
-        # Abstract clues (rows, diagonals, compass) go first so puzzles lean on rooms and furniture.
-        # The victim's own clues go early too: the victim's card mostly just says "the victim".
-        abstract = -10 if c.kind in ABSTRACT else 0
-        victims = -5 if c.p == victim else 0
-        return abstract + victims + sign * STRENGTH[c.kind] + jitter[c] * (3 if sign == 0 else 1)
-
-    kept = list(clues)
-    for clue in sorted(clues, key=priority):
-        # Every suspect keeps at least one clue about them.
-        if clue.p is not None and clue.p != victim and sum(1 for c in kept if c.p == clue.p) <= 1:
-            continue
-        trial = [c for c in kept if c != clue]
-        if len(solve(board, n, victim, trial, limit=2, genders=genders)) == 1:
-            kept = trial
-    return kept
+    def appeal(c: Clue, load) -> float:
+        # Abstract clues (rows, diagonals, compass) are a last resort; the victim's card mostly
+        # just says "the victim"; spread statements evenly: people who already have some
+        # count against, people with none get priority. `load` = statements per person so far.
+        score = sign * STRENGTH[c.kind] + jitter[c] * (3 if sign == 0 else 1)
+        score -= 10 if c.kind in ABSTRACT else 0
+        score -= 5 if c.p == victim else 0
+        if c.p is not None:
+            score += 3 if load.get(c.p, 0) == 0 else -2 * load[c.p]
+        return score
+    return appeal
 
 
-def difficulty_fits(difficulty: str, stats: dict, size: int) -> bool:
-    """Match the requested difficulty to how the step solver had to work.
+def select_clues(board: Board, n: int, victim: int, solution: list[Cell], pool: list[Clue],
+                 appeal, genders: list[str]) -> list[Clue] | None:
+    """Pick a small set of true clues with exactly one answer.
 
-    "lookahead" counts the rounds where a what-if check was needed; bigger boards
-    naturally need more of them, so the bands grow with the board.
+    Works upward: ask the solver for an answer other than the real one, add a clue that rules
+    it out, repeat. Each round is one search that usually finishes fast, so this scales to big
+    boards far better than starting from every clue and removing them one at a time.
+    A cleanup pass then drops clues that turned out to be redundant.
     """
-    if stats["deep"]:
-        return False  # never ship a puzzle that needs trial and error
+    chosen: list[Clue] = []
+    for _ in range(4 * n + 20):
+        try:
+            sols = solve(board, n, victim, chosen, limit=2, genders=genders, max_nodes=SEARCH_BUDGET)
+        except SearchLimit:
+            return None  # too big to prove by search; the caller uses the engine instead
+        other = next((s for s in sols if s != solution), None)
+        if other is None:
+            break
+        ruling_out = [c for c in pool if c not in chosen and not holds_full(c, other, board, genders, victim)]
+        if not ruling_out:
+            return None  # can't happen when the full pool is unique, but stay safe
+        load = Counter(c.p for c in chosen)
+        chosen.append(max(ruling_out, key=lambda c: appeal(c, load)))
+    else:
+        return None
+
+    # every suspect gets at least one statement on their card
+    for q in range(n):
+        if q != victim and not any(c.p == q for c in chosen):
+            own = [c for c in pool if c.p == q]
+            if own:
+                chosen.append(max(own, key=lambda c: appeal(c, {})))
+
+    # cleanup: drop clues the others already imply (least appealing first)
+    for clue in sorted(chosen, key=lambda c: appeal(c, {})):
+        if clue.p is not None and clue.p != victim and sum(1 for c in chosen if c.p == clue.p) <= 1:
+            continue
+        trial = [c for c in chosen if c != clue]
+        try:
+            if len(solve(board, n, victim, trial, limit=2, genders=genders, max_nodes=SEARCH_BUDGET)) == 1:
+                chosen = trial
+        except SearchLimit:
+            pass  # can't tell quickly: keep the clue
+    return chosen
+
+
+def seed_clues(n: int, victim: int, pool: list[Clue], appeal) -> list[Clue]:
+    """A starting point for the engine route: one appealing statement per suspect."""
+    chosen: list[Clue] = []
+    for q in range(n):
+        own = [c for c in pool if c.p == q]
+        if q != victim and own:
+            chosen.append(max(own, key=lambda c: appeal(c, {})))
+    return chosen
+
+
+def make_logical(board: Board, victim: int, solution: list[Cell], clues: list[Clue], pool: list[Clue],
+                 people: People, appeal) -> tuple[list[Clue], list[dict], dict] | None:
+    """Make sure the step-by-step engine can solve the case without guessing.
+
+    Wherever the engine gets stuck, add the most appealing clue that rules out at least one
+    square still open to someone, then try again. Usually 0-3 rounds.
+    """
+    clues = list(clues)
+    for _ in range(8 * len(solution)):
+        steps, stats = explain(board, victim, clues, solution, people, stop_when_stuck=True)
+        stuck = stats.pop("stuck", None)
+        if stuck is None:
+            return clues, steps, stats
+        chosen_people = Counter(c.p for c in clues)
+
+        def helps(c: Clue) -> bool:
+            if c in clues:
+                return False
+            if c.kind in UNARY or c.kind in ("alone_type", "other_room"):
+                return c.p in stuck and any(not unary_holds(c, cell, board) for cell in stuck[c.p])
+            # relational clues: useful when they involve someone still open
+            return c.p in stuck or c.q in stuck or c.p is None
+        useful = [c for c in pool if helps(c)]
+        if not useful:
+            return None
+        # big boards: add a couple at once so the engine is rerun fewer times
+        useful.sort(key=lambda c: appeal(c, chosen_people), reverse=True)
+        clues += useful[: 1 + len(stuck) // 6]
+    return None
+
+
+def make_easy(board: Board, victim: int, solution: list[Cell], clues: list[Clue], pool: list[Clue],
+              people: People) -> list[Clue] | None:
+    """Easy cases need no "what if" steps: keep adding the strongest unused clue (preferring
+    people with the fewest statements) until the engine solves it by direct deduction alone."""
+    clues = list(clues)
+    for _ in range(3 * len(solution)):
+        _, stats = explain(board, victim, clues, solution, people, stop_when_stuck=True)
+        if "stuck" not in stats and stats["lookahead"] == 0:
+            return clues
+        spare = [c for c in pool if c not in clues and c.p is not None and c.p != victim]
+        if not spare:
+            return None
+        load = {q: sum(1 for c in clues if c.p == q) for q in range(len(solution))}
+        clues.append(max(spare, key=lambda c: (STRENGTH[c.kind] - 2 * load[c.p], c.kind not in ABSTRACT)))
+    return None
+
+
+def trim_logical(board: Board, victim: int, solution: list[Cell], clues: list[Clue], people: People,
+                 appeal, difficulty: str) -> list[Clue]:
+    """Drop clues (least appealing first) while the engine still solves the case without
+    guessing and it doesn't get harder than asked for. Every suspect keeps a statement."""
+    size = len(solution)
+    ceiling = {"easy": 0, "medium": max(3, size // 2)}.get(difficulty)
+    load = Counter(c.p for c in clues)
+    for clue in sorted(clues, key=lambda c: (-load[c.p], appeal(c, {}))):
+        if clue.p is not None and clue.p != victim and sum(1 for c in clues if c.p == clue.p) <= 1:
+            continue
+        trial = [c for c in clues if c != clue]
+        _, stats = explain(board, victim, trial, solution, people, stop_when_stuck=True)
+        if "stuck" in stats:
+            continue
+        if ceiling is not None and stats["lookahead"] > ceiling:
+            continue
+        clues = trial
+    return clues
+
+
+def measured_difficulty(stats: dict, size: int) -> str:
+    """Name the difficulty after how much "what if" reasoning the engine needed."""
     la = stats["lookahead"]
-    if difficulty == "easy":
-        return la == 0
-    if difficulty == "medium":
-        return 1 <= la <= max(3, size - 3)
-    if difficulty == "hard":
-        return la >= 3
-    return la >= size  # expert
+    if la == 0:
+        return "easy"
+    if la <= max(3, size // 2):
+        return "medium"
+    if size >= 9 and la >= max(9, 0.6 * size):
+        return "expert"  # expert is reserved for big boards
+    return "hard"
 
 
-def generate(size: int, difficulty: str, rng: random.Random, max_tries: int = 300) -> dict:
-    best = None
+def generate(size: int, difficulty: str, rng: random.Random, max_tries: int = 50) -> dict:
+    """Build one case. `difficulty` steers which clues are preferred; the label on the case is
+    measured afterwards from how the step-by-step engine solved it."""
+    result = None
     for _ in range(max_tries):
         grid = make_rooms(size, rng)
         if grid is None:
@@ -228,24 +348,36 @@ def generate(size: int, difficulty: str, rng: random.Random, max_tries: int = 30
         solution, victim, murderer = picked
         place_objects(board, solution, rng)
 
-        # The cast comes first now: clues like "a woman was in the other Bedroom" need genders.
+        # The cast comes first: clues like "a woman was in the other Bedroom" need genders.
         cast = rng.sample(SUSPECTS, size - 1)
         cast = cast[:victim] + [rng.choice(VICTIMS)] + cast[victim:]
         people = People([nm for nm, _ in cast], [g for _, g in cast])
 
-        clues = true_clues(board, solution, victim, people.genders, rng)
-        if solve(board, size, victim, clues, limit=2, genders=people.genders) != [solution]:
-            continue  # rare: even every true clue can't pin it down
-        clues = trim_clues(board, size, victim, clues, difficulty, rng, people.genders)
-
+        pool = true_clues(board, solution, victim, people.genders, rng)
+        appeal = make_appeal(pool, difficulty, victim, rng)
+        # Small boards: build a unique set by search, then let the engine check it.
+        # Big boards (or when search runs over budget): let the engine pick the clues;
+        # anything it solves without guessing has exactly one answer.
+        clues = None
+        if size <= 10:
+            clues = select_clues(board, size, victim, solution, pool, appeal, people.genders)
+        if clues is None:
+            clues = seed_clues(size, victim, pool, appeal)
+        fixed = make_logical(board, victim, solution, clues, pool, people, appeal)
+        if fixed is None:
+            continue
+        clues = fixed[0]
+        if difficulty == "easy":
+            clues = make_easy(board, victim, solution, clues, pool, people)
+            if clues is None:
+                continue
+        clues = trim_logical(board, victim, solution, clues, people, appeal, difficulty)
         hints, stats = explain(board, victim, clues, solution, people)
-        if best is None or (best[-1]["deep"] and not stats["deep"]):
-            best = (board, solution, victim, murderer, clues, people, hints, stats)
-        if difficulty_fits(difficulty, stats, size):
-            best = (board, solution, victim, murderer, clues, people, hints, stats)
-            break
-    assert best is not None
-    board, solution, victim, murderer, clues, people, hints, stats = best
+        result = (board, solution, victim, murderer, clues, people, hints, stats)
+        break
+    assert result is not None, "no case could be built"
+    board, solution, victim, murderer, clues, people, hints, stats = result
+    difficulty = measured_difficulty(stats, size)
     names = people.names
 
     by_person: dict[int, list[Clue]] = {i: [] for i in range(size)}

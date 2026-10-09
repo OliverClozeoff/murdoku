@@ -50,6 +50,10 @@ ROOM_TYPES: dict[str, tuple[str, str, list[str], bool]] = {
     "Garden": ("#c4e5b1", "grass", ["tree", "bench", "plant", "pond"], True),
     "Hallway": ("#e4e1da", "tiles", ["carpet", "plant", "shelf"], True),
     "Garage": ("#c3c8d2", "concrete", ["car", "toolbox", "shelf"], False),
+    "Office": ("#d4e6d0", "planks", ["table", "chair", "shelf", "plant"], True),
+    "Laundry": ("#dfe9f2", "tiles", ["sink", "carpet", "shelf"], False),
+    "Gym": ("#f0d6c6", "concrete", ["bench", "carpet", "plant"], False),
+    "Pantry": ("#efe3c2", "checker", ["shelf", "table"], False),
 }
 
 # (name, gender) - initials must be unique; only the victim may start with V.

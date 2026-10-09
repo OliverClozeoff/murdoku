@@ -38,7 +38,8 @@ STRENGTH = {
 }
 
 DIRECTIONS = ("north", "south", "west", "east")
-NUMBERS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+NUMBERS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+           "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen"]
 EDGE2 = ["in the *first or second column*", "in the *last or second-to-last column*",
          "in the *top two rows*", "in the *bottom two rows*"]
 GENDER_WORD = {"f": "woman", "m": "man"}
@@ -338,3 +339,39 @@ def true_clues(board: Board, pos: list[Cell], victim: int, genders: list[str],
         elif rng.random() < 0.4:
             out.append(Clue("count", room=r, k=cnt))
     return list(dict.fromkeys(out))  # drop duplicates, keep order
+
+
+def holds_full(clue: Clue, pos: list[Cell], board: Board, genders: list[str], victim: int) -> bool:
+    """Does a clue hold on a complete placement? (Same lenient reading as the solver.)"""
+    n = len(pos)
+    rooms = [board.room(c) for c in pos]
+    p, k = clue.p, clue.kind
+    a = pos[p] if p is not None else None
+    others = [q for q in range(n) if q != p]
+    if k in UNARY:
+        return unary_holds(clue, a, board)
+    if k in BINARY:
+        if not binary_holds(clue, a, pos[clue.q], board):
+            return False
+        return k != "alone_with" or rooms.count(rooms[p]) == 2
+    g_ok = lambda q: clue.g is None or genders[q] == clue.g
+    match k:
+        case "alone":
+            return rooms.count(rooms[p]) == 1
+        case "alone_type":
+            return rooms.count(rooms[p]) == 1 and board.room_types[rooms[p]] == clue.rtype
+        case "empty":
+            return rooms.count(clue.room) == 0
+        case "count":
+            return rooms.count(clue.room) == clue.k
+        case "dir_count":
+            return sum(in_direction(pos[q], a, clue.obj) for q in others) == clue.k
+        case "empty_beside":
+            return any(rooms.count(r) == 0 for r in empty_neighbour_rooms(a, board))
+        case "other_room":
+            if board.room_types[rooms[p]] != clue.rtype:
+                return False
+        case _ if k not in EXISTS:
+            raise ValueError(k)
+    squares = set(target_cells(clue, a, board))
+    return any(pos[q] in squares and g_ok(q) for q in others)

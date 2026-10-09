@@ -8,13 +8,17 @@ A logic murder-mystery puzzle game. Place every person on the floor plan with on
 ## Make puzzles
 
 ```bash
-py generator/build.py                         # 21 puzzles, seed 2026
-py generator/build.py --count 40 --seed 99    # different set
+py generator/build.py --add 20                # keep every existing case, add 20 new ones
+py generator/build.py --count 33 --seed 2026  # build a brand-new set (REPLACES the existing cases)
+py generator/build.py --reorder               # re-label existing cases after changing difficulty rules
 ```
 
-Output goes to `docs/puzzles/` (one JSON per case plus `index.json`). Sizes and difficulties cycle through `PLAN` in `generator/build.py`.
+Use `--add` to grow the collection: existing cases keep their numbers and content (so nobody's progress
+is affected) and new ones get the next numbers. Repeated `--add` runs always give new cases. The case list
+groups cases by difficulty, so new easy cases show up in the Easy section.
 
-Difficulty is checked, not just requested. Easy cases can be solved with simple steps only, medium ones need 1–3 "what if" look-ahead rounds, and hard ones need 3 or more. No case ever needs trial and error. The build prints these counts for each case.
+Output goes to `docs/puzzles/` (one JSON per case plus `index.json`). Board sizes cycle through `PLAN` in
+`generator/build.py`.
 
 ## Play locally
 

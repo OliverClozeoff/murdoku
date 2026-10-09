@@ -177,20 +177,31 @@ function showHome() {
   els.home.hidden = false;
   document.title = "Murdoku";
   els.list.innerHTML = "";
-  for (const p of index) {
-    const saved = p.grid ? loadSave(p.id, p.grid) : null;
-    const a = document.createElement("a");
-    a.className = "case-card";
-    a.href = "#" + p.id;
-    const mini = p.grid
-      ? `<div class="mini" style="grid-template-columns:repeat(${p.size},1fr)">${p.grid.flat().map((room, i) =>
-        `<i class="${p.blocked.includes(i) ? "b" : ""}" style="background:${p.colors[room]}"></i>`).join("")}</div>`
-      : "";
-    a.innerHTML = `
-      <h3><span>${esc(p.title)}</span>${saved?.solved ? '<span class="solved">✓ solved</span>' : ""}</h3>
-      ${mini}
-      <div class="meta"><span class="pill ${p.difficulty}">${p.difficulty}</span>${p.size}×${p.size} · ${p.rooms.length} rooms</div>`;
-    els.list.append(a);
+  // One section per difficulty; cases keep their numbers, so a section can read #1-6, #34.
+  for (const level of ["easy", "medium", "hard", "expert"]) {
+    const cases = index.filter(p => p.difficulty === level);
+    if (!cases.length) continue;
+    const solved = cases.filter(p => p.grid && loadSave(p.id, p.grid)?.solved).length;
+    els.list.insertAdjacentHTML("beforeend",
+      `<h2 class="list-head"><span class="pill ${level}">${level}</span><span class="muted">${solved}/${cases.length} solved</span></h2>`);
+    const grid = document.createElement("div");
+    grid.className = "case-grid";
+    for (const p of cases) {
+      const saved = p.grid ? loadSave(p.id, p.grid) : null;
+      const a = document.createElement("a");
+      a.className = "case-card";
+      a.href = "#" + p.id;
+      const mini = p.grid
+        ? `<div class="mini" style="grid-template-columns:repeat(${p.size},1fr)">${p.grid.flat().map((room, i) =>
+          `<i class="${p.blocked.includes(i) ? "b" : ""}" style="background:${p.colors[room]}"></i>`).join("")}</div>`
+        : "";
+      a.innerHTML = `
+        <h3><span>${esc(p.title)}</span>${saved?.solved ? '<span class="solved">✓ solved</span>' : ""}</h3>
+        ${mini}
+        <div class="meta"><span class="pill ${p.difficulty}">${p.difficulty}</span>${p.size}×${p.size} · ${p.rooms.length} rooms</div>`;
+      grid.append(a);
+    }
+    els.list.append(grid);
   }
 }
 
@@ -354,6 +365,7 @@ function setCoords() {
 
 function buildCards() {
   buildPicker();
+  els.cards.classList.toggle("many", puzzle.people.length > 9);  // big cases: compact cards
   els.facts.innerHTML = (puzzle.facts || []).map(f => `<div class="fact">${fmt(f.text)}</div>`).join("");
   els.cards.innerHTML = "";
   order.forEach(k => {
